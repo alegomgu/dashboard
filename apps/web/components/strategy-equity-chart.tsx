@@ -1,7 +1,7 @@
 import type { BenchmarkSeries, StrategyComparisonRow } from "@/lib/strategies";
 
 const colors = ["#0f766e", "#2563eb", "#d97706"];
-const benchmarkColor = "#64748b";
+const benchmarkColor = "#111827";
 
 type StrategyEquityChartProps = {
   rows: StrategyComparisonRow[];
@@ -47,6 +47,7 @@ export function StrategyEquityChart({
           points: benchmark.history,
           source: benchmark.source,
           dashed: true,
+          benchmark: true,
         }
       : null;
   const chartSeries = benchmarkItem ? [...series, benchmarkItem] : series;
@@ -118,7 +119,7 @@ export function StrategyEquityChart({
               d={pathFor(points)}
               fill="none"
               stroke={item.color}
-              strokeWidth="3"
+              strokeWidth={"benchmark" in item && item.benchmark ? "4" : "3"}
               strokeDasharray={"dashed" in item && item.dashed ? "8 6" : undefined}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -129,11 +130,24 @@ export function StrategyEquityChart({
       <div className="mt-3 flex flex-wrap gap-3 text-sm">
         {chartSeries.map((item) => (
           <div key={item.key} className="flex items-center gap-2">
-            <span className="size-3 rounded-full" style={{ backgroundColor: item.color }} />
+            <span
+              className={
+                "size-3 rounded-full " +
+                ("benchmark" in item && item.benchmark
+                  ? "ring-2 ring-ink/20"
+                  : "")
+              }
+              style={{ backgroundColor: item.color }}
+            />
             <span className="font-medium">{item.label}</span>
             <span className="rounded-full border border-line bg-panelSoft px-2 py-0.5 text-xs uppercase text-muted">
               {item.source}
             </span>
+            {"benchmark" in item && item.benchmark ? (
+              <span className="rounded-full border border-ink/20 bg-ink px-2 py-0.5 text-xs uppercase text-panel">
+                benchmark
+              </span>
+            ) : null}
           </div>
         ))}
       </div>
