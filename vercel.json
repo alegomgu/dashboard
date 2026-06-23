@@ -1,0 +1,11 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "pnpm --filter @command-center/web build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "crons": [
+    {
+      "path": "/api/snapshots/capture",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}
