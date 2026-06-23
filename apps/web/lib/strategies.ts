@@ -120,6 +120,9 @@ export type StrategyComparisonRow = {
   totalPl: number | null;
   history: Array<{ timestamp: number; equity: number; normalized: number }>;
   historySource: "local" | "alpaca" | "none";
+  alpacaIntradayHistory: Array<{ timestamp: number; equity: number; normalized: number }>;
+  alpacaIntradayReturn: number | null;
+  alpacaIntradayDrawdown: number | null;
   localSnapshots: number;
   localReturn: number | null;
   localDrawdown: number | null;
@@ -151,13 +154,23 @@ export async function getStrategyComparison(): Promise<{
           baseUrl: account.baseUrl,
         });
         const correlationId = createCorrelationId(`strategy-${meta.slug}`);
-        const [alpacaAccount, positions, orders, history] = await Promise.all([
+        const [
+          alpacaAccount,
+          positions,
+          orders,
+          dailyHistory,
+          intradayHistory,
+        ] = await Promise.all([
           client.getAccount(correlationId),
           client.getPositions(correlationId),
           client.getOrders(correlationId, { status: "open", limit: 100 }),
           client.getPortfolioHistory(correlationId, {
             period: "1M",
             timeframe: "1D",
+          }),
+          client.getPortfolioHistory(correlationId, {
+            period: "1D",
+            timeframe: "5Min",
           }),
         ]);
         const equity = Number(alpacaAccount.equity);
@@ -175,9 +188,14 @@ export async function getStrategyComparison(): Promise<{
           0,
         );
         const historyPoints = normalizeHistory(
-          history.timestamp ?? [],
-          history.equity ?? [],
+          dailyHistory.timestamp ?? [],
+          dailyHistory.equity ?? [],
         );
+        const alpacaIntradayHistory = normalizeHistory(
+          intradayHistory.timestamp ?? [],
+          intradayHistory.equity ?? [],
+        );
+        const intradayStats = historyStats(alpacaIntradayHistory);
 
         return {
           meta,
@@ -192,6 +210,9 @@ export async function getStrategyComparison(): Promise<{
           totalPl,
           history: historyPoints,
           historySource: historyPoints.length >= 2 ? "alpaca" : "none",
+          alpacaIntradayHistory,
+          alpacaIntradayReturn: intradayStats.totalReturn,
+          alpacaIntradayDrawdown: intradayStats.currentDrawdown,
           localSnapshots: 0,
           localReturn: null,
           localDrawdown: null,
@@ -246,6 +267,20 @@ function normalizeHistory(timestamps: number[], equity: number[]) {
   }));
 }
 
+function historyStats(points: Array<{ equity: number }>) {
+  const first = points.at(0)?.equity ?? null;
+  const last = points.at(-1)?.equity ?? null;
+  const maxEquity = points.reduce(
+    (max, point) => Math.max(max, point.equity),
+    first ?? 0,
+  );
+
+  return {
+    totalReturn: first && last ? last / first - 1 : null,
+    currentDrawdown: last && maxEquity > 0 ? last / maxEquity - 1 : null,
+  };
+}
+
 function emptyRow(meta: StrategyMeta, error: string): StrategyComparisonRow {
   return {
     meta,
@@ -260,6 +295,9 @@ function emptyRow(meta: StrategyMeta, error: string): StrategyComparisonRow {
     totalPl: null,
     history: [],
     historySource: "none",
+    alpacaIntradayHistory: [],
+    alpacaIntradayReturn: null,
+    alpacaIntradayDrawdown: null,
     localSnapshots: 0,
     localReturn: null,
     localDrawdown: null,

@@ -2,18 +2,35 @@ import type { StrategyComparisonRow } from "@/lib/strategies";
 
 const colors = ["#0f766e", "#2563eb", "#d97706"];
 
+type StrategyEquityChartProps = {
+  rows: StrategyComparisonRow[];
+  mode?: "local" | "alpacaIntraday";
+  title?: string;
+  description?: string;
+};
+
 function pathFor(points: Array<{ x: number; y: number }>) {
   return points
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`)
     .join(" ");
 }
 
-export function StrategyEquityChart({ rows }: { rows: StrategyComparisonRow[] }) {
+export function StrategyEquityChart({
+  rows,
+  mode = "local",
+  title = "Evolución normalizada",
+  description,
+}: StrategyEquityChartProps) {
   const series = rows
     .map((row, index) => ({
       row,
       color: colors[index % colors.length],
-      points: row.history,
+      points:
+        mode === "alpacaIntraday" ? row.alpacaIntradayHistory : row.history,
+      source:
+        mode === "alpacaIntraday"
+          ? "alpaca 1D"
+          : row.historySource,
     }))
     .filter((item) => item.points.length >= 2);
 
@@ -41,6 +58,12 @@ export function StrategyEquityChart({ rows }: { rows: StrategyComparisonRow[] })
 
   return (
     <div className="rounded-2xl border border-line bg-panel p-4 shadow-panel">
+      <div className="mb-3">
+        <h3 className="text-base font-semibold">{title}</h3>
+        {description ? (
+          <p className="mt-1 text-sm text-muted">{description}</p>
+        ) : null}
+      </div>
       <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" aria-label="Comparativa normalizada de estrategias">
         <line
           x1={padding.left}
@@ -87,7 +110,7 @@ export function StrategyEquityChart({ rows }: { rows: StrategyComparisonRow[] })
             <span className="size-3 rounded-full" style={{ backgroundColor: item.color }} />
             <span className="font-medium">{item.row.meta.title}</span>
             <span className="rounded-full border border-line bg-panelSoft px-2 py-0.5 text-xs uppercase text-muted">
-              {item.row.historySource}
+              {item.source}
             </span>
           </div>
         ))}

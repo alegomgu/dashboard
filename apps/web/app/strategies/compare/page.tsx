@@ -49,6 +49,14 @@ export default async function StrategyComparePage() {
     .filter((row) => row.localDrawdown !== null)
     .sort((left, right) => (left.localDrawdown ?? 0) - (right.localDrawdown ?? 0))
     .at(0);
+  const bestAlpacaIntradayRow = successfulRows
+    .filter((row) => row.alpacaIntradayReturn !== null)
+    .sort(
+      (left, right) =>
+        (right.alpacaIntradayReturn ?? -Infinity) -
+        (left.alpacaIntradayReturn ?? -Infinity),
+    )
+    .at(0);
 
   return (
     <div className="w-full px-4 py-4 sm:px-6 lg:px-8 lg:py-7">
@@ -89,7 +97,7 @@ export default async function StrategyComparePage() {
         </div>
       </header>
 
-      <section className="mt-4 grid gap-4 md:grid-cols-3">
+      <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-line bg-panel p-5 shadow-panel">
           <p className="text-xs font-semibold uppercase text-muted">
             Equity agregado
@@ -121,6 +129,19 @@ export default async function StrategyComparePage() {
           </p>
           <p className="mt-2 text-sm text-muted">
             {highestDrawdownRow?.meta.title ?? "Aún falta histórico propio."}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-line bg-panel p-5 shadow-panel">
+          <p className="text-xs font-semibold uppercase text-muted">
+            Mejor intradía Alpaca
+          </p>
+          <p className="mt-3 text-2xl font-semibold tracking-normal">
+            {bestAlpacaIntradayRow
+              ? pct(bestAlpacaIntradayRow.alpacaIntradayReturn)
+              : "n/a"}
+          </p>
+          <p className="mt-2 text-sm text-muted">
+            {bestAlpacaIntradayRow?.meta.title ?? "Sin curva intradía."}
           </p>
         </div>
       </section>
@@ -204,7 +225,20 @@ export default async function StrategyComparePage() {
       </section>
 
       <section className="mt-4">
-        <StrategyEquityChart rows={comparison.rows} />
+        <StrategyEquityChart
+          rows={comparison.rows}
+          title="Evolución local"
+          description="Curva construida con snapshots propios guardados en Postgres al entrar en esta sección o pulsar actualizar."
+        />
+      </section>
+
+      <section className="mt-4">
+        <StrategyEquityChart
+          rows={comparison.rows}
+          mode="alpacaIntraday"
+          title="Evolución intradía Alpaca"
+          description="Portfolio history de Alpaca para 1D/5Min. Útil para ver el movimiento del día con más resolución."
+        />
       </section>
 
       <section className="mt-4 rounded-2xl border border-line bg-panel p-5 shadow-panel">
@@ -218,7 +252,7 @@ export default async function StrategyComparePage() {
           <StatusBadge label="Read only" tone="success" />
         </div>
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[1180px] border-collapse text-sm">
+          <table className="w-full min-w-[1380px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase text-muted">
                 <th className="py-2 font-semibold">Estrategia</th>
@@ -231,6 +265,8 @@ export default async function StrategyComparePage() {
                 <th className="py-2 text-right font-semibold">P&L total</th>
                 <th className="py-2 text-right font-semibold">Ret. local</th>
                 <th className="py-2 text-right font-semibold">DD local</th>
+                <th className="py-2 text-right font-semibold">Ret. Alpaca 1D</th>
+                <th className="py-2 text-right font-semibold">DD Alpaca 1D</th>
                 <th className="py-2 text-right font-semibold">Snap.</th>
                 <th className="py-2 text-right font-semibold">Curva</th>
                 <th className="py-2 font-semibold">Estado</th>
@@ -251,6 +287,12 @@ export default async function StrategyComparePage() {
                   </td>
                   <td className="py-3 text-right">{pct(row.localReturn)}</td>
                   <td className="py-3 text-right">{pct(row.localDrawdown)}</td>
+                  <td className="py-3 text-right">
+                    {pct(row.alpacaIntradayReturn)}
+                  </td>
+                  <td className="py-3 text-right">
+                    {pct(row.alpacaIntradayDrawdown)}
+                  </td>
                   <td className="py-3 text-right">{row.localSnapshots}</td>
                   <td className="py-3 text-right uppercase text-muted">
                     {row.historySource}
