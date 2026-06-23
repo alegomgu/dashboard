@@ -316,7 +316,7 @@ export async function getStrategyComparison(
     };
   });
 
-  const benchmark = await getSpyBenchmark(rows, alpacaTimeframe);
+  const benchmark = await getSpyBenchmark(rows, alpacaPeriod, alpacaTimeframe);
 
   return { generatedAtUtc, alpacaPeriod, alpacaTimeframe, benchmark, rows };
 }
@@ -384,41 +384,33 @@ function historyStats(points: Array<{ equity: number }>) {
 
 async function getSpyBenchmark(
   rows: StrategyComparisonRow[],
+  period: AlpacaHistoryPeriod,
   timeframe: AlpacaHistoryTimeframe,
 ): Promise<BenchmarkSeries | null> {
-  const firstRowWithHistory = rows.find(
-    (row) => row.alpacaHistory.length >= 2,
-  );
-  if (!firstRowWithHistory) {
+  const firstAvailableRow = rows.find((row) => !row.error) ?? rows.at(0);
+  if (!firstAvailableRow) {
     return null;
   }
 
   try {
-    const account = getSelectedAlpacaAccount(firstRowWithHistory.meta.accountId);
+    const account = getSelectedAlpacaAccount(firstAvailableRow.meta.accountId);
     const env = getSelectedAccountServerEnv(account);
     const client = createAlpacaReadOnlyClient(env, {
       baseUrl: account.baseUrl,
     });
-    const allTimestamps = rows.flatMap((row) =>
-      row.alpacaHistory.map((point) => point.timestamp),
-    );
-    const startTimestamp = Math.min(...allTimestamps);
-    const endTimestamp = Math.max(...allTimestamps);
+    const { startTimestamp, endTimestamp } = benchmarkRange(rows, period);
     const bars = await client.getStockBars(createCorrelationId("benchmark-spy"), {
       symbol: "SPY",
       timeframe: toMarketDataTimeframe(timeframe),
       start: new Date(startTimestamp * 1000).toISOString(),
     });
+    const filteredBars = bars.filter((bar) => {
+      const timestamp = Math.floor(new Date(bar.t).getTime() / 1000);
+      return timestamp >= startTimestamp - 60 && timestamp <= endTimestamp + 60;
+    });
     const history = normalizeHistory(
-      bars
-        .map((bar) => Math.floor(new Date(bar.t).getTime() / 1000))
-        .filter((timestamp) => timestamp <= endTimestamp + 60),
-      bars
-        .filter(
-          (bar) =>
-            Math.floor(new Date(bar.t).getTime() / 1000) <= endTimestamp + 60,
-        )
-        .map((bar) => bar.c),
+      filteredBars.map((bar) => Math.floor(new Date(bar.t).getTime() / 1000)),
+      filteredBars.map((bar) => bar.c),
     );
     const stats = historyStats(history);
 
@@ -432,6 +424,60 @@ async function getSpyBenchmark(
   } catch {
     return null;
   }
+}
+
+function benchmarkRange(
+  rows: StrategyComparisonRow[],
+  period: AlpacaHistoryPeriod,
+) {
+  const now = Math.floor(Date.now() / 1000);
+  const periodStart = periodStartTimestamp(period, now);
+  const visibleTimestamps = rows.flatMap((row) => {
+    const alpacaTimestamps = row.alpacaHistory
+      .map((point) => point.timestamp)
+      .filter((timestamp) => timestamp >= periodStart);
+    if (alpacaTimestamps.length >= 2) {
+      return alpacaTimestamps;
+    }
+
+    const localTimestamps = row.history
+      .map((point) => point.timestamp)
+      .filter((timestamp) => timestamp >= periodStart);
+    if (localTimestamps.length >= 2) {
+      return localTimestamps;
+    }
+
+    return row.history.map((point) => point.timestamp);
+  });
+
+  if (!visibleTimestamps.length) {
+    return { startTimestamp: periodStart, endTimestamp: now };
+  }
+
+  return {
+    startTimestamp: Math.min(...visibleTimestamps, now),
+    endTimestamp: Math.max(...visibleTimestamps, now),
+  };
+}
+
+function periodStartTimestamp(period: AlpacaHistoryPeriod, now: number) {
+  const day = 24 * 60 * 60;
+  if (period === "1D") {
+    return now - day;
+  }
+  if (period === "1W") {
+    return now - 7 * day;
+  }
+  if (period === "1M") {
+    return now - 31 * day;
+  }
+  if (period === "3M") {
+    return now - 93 * day;
+  }
+  if (period === "1A" || period === "1Y") {
+    return now - 366 * day;
+  }
+  return now - 5 * 366 * day;
 }
 
 function emptyRow(

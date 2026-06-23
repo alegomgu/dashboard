@@ -25,18 +25,16 @@ export function StrategyEquityChart({
   benchmark,
 }: StrategyEquityChartProps) {
   const series = rows
-    .map((row, index) => ({
-      row,
-      key: row.meta.slug,
-      label: row.meta.title,
-      color: colors[index % colors.length],
-      points:
-        mode === "alpaca" ? row.alpacaHistory : row.history,
-      source:
-        mode === "alpaca"
-          ? `alpaca ${row.alpacaHistoryPeriod}/${row.alpacaHistoryTimeframe}`
-          : row.historySource,
-    }))
+    .map((row, index) => {
+      const display = displayHistory(row, mode);
+      return {
+        key: row.meta.slug,
+        label: row.meta.title,
+        color: colors[index % colors.length],
+        points: display.points,
+        source: display.source,
+      };
+    })
     .filter((item) => item.points.length >= 2);
   const benchmarkItem =
     benchmark && benchmark.history.length >= 2
@@ -153,4 +151,71 @@ export function StrategyEquityChart({
       </div>
     </div>
   );
+}
+
+function displayHistory(row: StrategyComparisonRow, mode: "local" | "alpaca") {
+  if (mode === "local") {
+    return {
+      points: row.history,
+      source: row.historySource,
+    };
+  }
+
+  if (row.alpacaHistory.length >= 2) {
+    return {
+      points: row.alpacaHistory,
+      source: `alpaca ${row.alpacaHistoryPeriod}/${row.alpacaHistoryTimeframe}`,
+    };
+  }
+
+  const periodStart = periodStartTimestamp(row.alpacaHistoryPeriod);
+  const localInPeriod = row.history.filter(
+    (point) => point.timestamp >= periodStart,
+  );
+  if (localInPeriod.length >= 2) {
+    return {
+      points: rebase(localInPeriod),
+      source: "local fallback",
+    };
+  }
+
+  return {
+    points: rebase(row.history),
+    source: row.history.length >= 2 ? "local fallback" : "none",
+  };
+}
+
+function rebase(points: StrategyComparisonRow["history"]) {
+  const base = points.at(0)?.equity ?? 0;
+  if (base <= 0) {
+    return points;
+  }
+
+  return points.map((point) => ({
+    ...point,
+    normalized: point.equity / base - 1,
+  }));
+}
+
+function periodStartTimestamp(
+  period: StrategyComparisonRow["alpacaHistoryPeriod"],
+) {
+  const now = Math.floor(Date.now() / 1000);
+  const day = 24 * 60 * 60;
+  if (period === "1D") {
+    return now - day;
+  }
+  if (period === "1W") {
+    return now - 7 * day;
+  }
+  if (period === "1M") {
+    return now - 31 * day;
+  }
+  if (period === "3M") {
+    return now - 93 * day;
+  }
+  if (period === "1A" || period === "1Y") {
+    return now - 366 * day;
+  }
+  return now - 5 * 366 * day;
 }
