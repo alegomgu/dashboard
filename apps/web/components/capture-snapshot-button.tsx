@@ -14,7 +14,7 @@ export function CaptureSnapshotButton() {
     setMessage(null);
     setIsCapturing(true);
     try {
-      const response = await fetch("/api/snapshots/capture", {
+      const response = await fetch(`/api/snapshots/capture${window.location.search}`, {
         method: "POST",
         cache: "no-store",
       });

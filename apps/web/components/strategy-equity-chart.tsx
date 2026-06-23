@@ -1,12 +1,14 @@
-import type { StrategyComparisonRow } from "@/lib/strategies";
+import type { BenchmarkSeries, StrategyComparisonRow } from "@/lib/strategies";
 
 const colors = ["#0f766e", "#2563eb", "#d97706"];
+const benchmarkColor = "#64748b";
 
 type StrategyEquityChartProps = {
   rows: StrategyComparisonRow[];
-  mode?: "local" | "alpacaIntraday";
+  mode?: "local" | "alpaca";
   title?: string;
   description?: string;
+  benchmark?: BenchmarkSeries | null;
 };
 
 function pathFor(points: Array<{ x: number; y: number }>) {
@@ -20,21 +22,36 @@ export function StrategyEquityChart({
   mode = "local",
   title = "Evolución normalizada",
   description,
+  benchmark,
 }: StrategyEquityChartProps) {
   const series = rows
     .map((row, index) => ({
       row,
+      key: row.meta.slug,
+      label: row.meta.title,
       color: colors[index % colors.length],
       points:
-        mode === "alpacaIntraday" ? row.alpacaIntradayHistory : row.history,
+        mode === "alpaca" ? row.alpacaHistory : row.history,
       source:
-        mode === "alpacaIntraday"
-          ? "alpaca 1D"
+        mode === "alpaca"
+          ? `alpaca ${row.alpacaHistoryPeriod}/${row.alpacaHistoryTimeframe}`
           : row.historySource,
     }))
     .filter((item) => item.points.length >= 2);
+  const benchmarkItem =
+    benchmark && benchmark.history.length >= 2
+      ? {
+          key: "benchmark-spy",
+          label: benchmark.label,
+          color: benchmarkColor,
+          points: benchmark.history,
+          source: benchmark.source,
+          dashed: true,
+        }
+      : null;
+  const chartSeries = benchmarkItem ? [...series, benchmarkItem] : series;
 
-  if (!series.length) {
+  if (!chartSeries.length) {
     return (
       <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-line bg-panelSoft px-4 text-center text-sm text-muted">
         Sin histórico suficiente todavía. La curva aparecerá cuando Alpaca devuelva portfolio history o se acumulen snapshots.
@@ -42,8 +59,12 @@ export function StrategyEquityChart({
     );
   }
 
-  const allValues = series.flatMap((item) => item.points.map((point) => point.normalized));
-  const allTimestamps = series.flatMap((item) => item.points.map((point) => point.timestamp));
+  const allValues = chartSeries.flatMap((item) =>
+    item.points.map((point) => point.normalized),
+  );
+  const allTimestamps = chartSeries.flatMap((item) =>
+    item.points.map((point) => point.timestamp),
+  );
   const min = Math.min(...allValues, 0);
   const max = Math.max(...allValues, 0);
   const span = Math.max(max - min, 0.01);
@@ -86,18 +107,19 @@ export function StrategyEquityChart({
             </g>
           );
         })}
-        {series.map((item) => {
+        {chartSeries.map((item) => {
           const points = item.points.map((point) => ({
             x: padding.left + ((point.timestamp - firstTs) / tsSpan) * innerW,
             y: padding.top + ((max - point.normalized) / span) * innerH,
           }));
           return (
             <path
-              key={item.row.meta.slug}
+              key={item.key}
               d={pathFor(points)}
               fill="none"
               stroke={item.color}
               strokeWidth="3"
+              strokeDasharray={"dashed" in item && item.dashed ? "8 6" : undefined}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -105,10 +127,10 @@ export function StrategyEquityChart({
         })}
       </svg>
       <div className="mt-3 flex flex-wrap gap-3 text-sm">
-        {series.map((item) => (
-          <div key={item.row.meta.slug} className="flex items-center gap-2">
+        {chartSeries.map((item) => (
+          <div key={item.key} className="flex items-center gap-2">
             <span className="size-3 rounded-full" style={{ backgroundColor: item.color }} />
-            <span className="font-medium">{item.row.meta.title}</span>
+            <span className="font-medium">{item.label}</span>
             <span className="rounded-full border border-line bg-panelSoft px-2 py-0.5 text-xs uppercase text-muted">
               {item.source}
             </span>

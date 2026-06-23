@@ -3,9 +3,18 @@ import { CaptureSnapshotButton } from "@/components/capture-snapshot-button";
 import { StrategyEquityChart } from "@/components/strategy-equity-chart";
 import { StatusBadge } from "@/components/status-badge";
 import { getHistoryHealth, readHistoryFile } from "@/lib/account-history";
-import { getStrategyComparison } from "@/lib/strategies";
+import {
+  alpacaPeriodOptions,
+  alpacaTimeframeOptions,
+  getStrategyComparison,
+} from "@/lib/strategies";
 
 export const dynamic = "force-dynamic";
+
+type StrategyCompareSearchParams = {
+  period?: string | string[];
+  timeframe?: string | string[];
+};
 
 function money(value: number | null) {
   if (value === null || Number.isNaN(value)) {
@@ -33,8 +42,20 @@ function dateTime(value: string) {
   }).format(new Date(value));
 }
 
-export default async function StrategyComparePage() {
-  const comparison = await getStrategyComparison();
+export default async function StrategyComparePage({
+  searchParams,
+}: {
+  searchParams?: Promise<StrategyCompareSearchParams>;
+}) {
+  const params = await searchParams;
+  const comparison = await getStrategyComparison(
+    params
+      ? {
+          alpacaPeriod: params.period,
+          alpacaTimeframe: params.timeframe,
+        }
+      : undefined,
+  );
   const historyHealth = getHistoryHealth(await readHistoryFile());
   const successfulRows = comparison.rows.filter((row) => !row.error);
   const totalEquity = successfulRows.reduce(
@@ -49,12 +70,12 @@ export default async function StrategyComparePage() {
     .filter((row) => row.localDrawdown !== null)
     .sort((left, right) => (left.localDrawdown ?? 0) - (right.localDrawdown ?? 0))
     .at(0);
-  const bestAlpacaIntradayRow = successfulRows
-    .filter((row) => row.alpacaIntradayReturn !== null)
+  const bestAlpacaRow = successfulRows
+    .filter((row) => row.alpacaHistoryReturn !== null)
     .sort(
       (left, right) =>
-        (right.alpacaIntradayReturn ?? -Infinity) -
-        (left.alpacaIntradayReturn ?? -Infinity),
+        (right.alpacaHistoryReturn ?? -Infinity) -
+        (left.alpacaHistoryReturn ?? -Infinity),
     )
     .at(0);
 
@@ -79,7 +100,8 @@ export default async function StrategyComparePage() {
             <p className="mt-4 max-w-3xl text-sm leading-6 text-muted">
               Comparativa read-only entre las tres estrategias/cuentas. La curva
               se normaliza desde el primer snapshot propio. Esta sección captura
-              un nuevo punto al cargar y también permite forzar refresco manual.
+              un nuevo punto al cargar y permite comparar el portfolio history
+              de Alpaca contra SPY como proxy del S&P 500.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row xl:flex-col">
@@ -96,6 +118,58 @@ export default async function StrategyComparePage() {
           </div>
         </div>
       </header>
+
+      <section className="mt-4 rounded-2xl border border-line bg-panel p-5 shadow-panel">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <h3 className="text-base font-semibold">Intervalo Alpaca</h3>
+            <p className="mt-1 text-sm text-muted">
+              Controla la curva de portfolio history de Alpaca y el benchmark
+              SPY. El histórico local de Postgres se mantiene separado.
+            </p>
+          </div>
+          <form className="grid gap-3 sm:grid-cols-[160px_160px_auto]" method="get">
+            <label className="grid gap-1 text-sm">
+              <span className="text-xs font-semibold uppercase text-muted">
+                Periodo
+              </span>
+              <select
+                name="period"
+                defaultValue={comparison.alpacaPeriod}
+                className="h-11 rounded-xl border border-line bg-panelSoft px-3 text-sm font-semibold outline-none"
+              >
+                {alpacaPeriodOptions.map((period) => (
+                  <option key={period} value={period}>
+                    {period === "1A" ? "1A / 1Y" : period}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="text-xs font-semibold uppercase text-muted">
+                Timeframe
+              </span>
+              <select
+                name="timeframe"
+                defaultValue={comparison.alpacaTimeframe}
+                className="h-11 rounded-xl border border-line bg-panelSoft px-3 text-sm font-semibold outline-none"
+              >
+                {alpacaTimeframeOptions.map((timeframe) => (
+                  <option key={timeframe} value={timeframe}>
+                    {timeframe}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="submit"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-ink px-4 text-sm font-semibold text-panel shadow-sm"
+            >
+              Aplicar
+            </button>
+          </form>
+        </div>
+      </section>
 
       <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-line bg-panel p-5 shadow-panel">
@@ -133,15 +207,15 @@ export default async function StrategyComparePage() {
         </div>
         <div className="rounded-2xl border border-line bg-panel p-5 shadow-panel">
           <p className="text-xs font-semibold uppercase text-muted">
-            Mejor intradía Alpaca
+            Mejor Alpaca {comparison.alpacaPeriod}
           </p>
           <p className="mt-3 text-2xl font-semibold tracking-normal">
-            {bestAlpacaIntradayRow
-              ? pct(bestAlpacaIntradayRow.alpacaIntradayReturn)
+            {bestAlpacaRow
+              ? pct(bestAlpacaRow.alpacaHistoryReturn)
               : "n/a"}
           </p>
           <p className="mt-2 text-sm text-muted">
-            {bestAlpacaIntradayRow?.meta.title ?? "Sin curva intradía."}
+            {bestAlpacaRow?.meta.title ?? "Sin curva Alpaca."}
           </p>
         </div>
       </section>
@@ -235,10 +309,24 @@ export default async function StrategyComparePage() {
       <section className="mt-4">
         <StrategyEquityChart
           rows={comparison.rows}
-          mode="alpacaIntraday"
-          title="Evolución intradía Alpaca"
-          description="Portfolio history de Alpaca para 1D/5Min. Útil para ver el movimiento del día con más resolución."
+          mode="alpaca"
+          benchmark={comparison.benchmark}
+          title={`Evolución Alpaca ${comparison.alpacaPeriod}/${comparison.alpacaTimeframe}`}
+          description="Portfolio history de Alpaca con SPY como proxy del S&P 500. El benchmark usa market data de Alpaca y se normaliza al mismo eje."
         />
+      </section>
+
+      <section className="mt-4 grid gap-4 xl:grid-cols-3">
+        {comparison.rows.map((row) => (
+          <StrategyEquityChart
+            key={row.meta.slug}
+            rows={[row]}
+            mode="alpaca"
+            benchmark={comparison.benchmark}
+            title={`${row.meta.title} vs SPY`}
+            description={`${row.accountName} · ${comparison.alpacaPeriod}/${comparison.alpacaTimeframe}`}
+          />
+        ))}
       </section>
 
       <section className="mt-4 rounded-2xl border border-line bg-panel p-5 shadow-panel">
@@ -265,8 +353,10 @@ export default async function StrategyComparePage() {
                 <th className="py-2 text-right font-semibold">P&L total</th>
                 <th className="py-2 text-right font-semibold">Ret. local</th>
                 <th className="py-2 text-right font-semibold">DD local</th>
-                <th className="py-2 text-right font-semibold">Ret. Alpaca 1D</th>
-                <th className="py-2 text-right font-semibold">DD Alpaca 1D</th>
+                <th className="py-2 text-right font-semibold">
+                  Ret. Alpaca
+                </th>
+                <th className="py-2 text-right font-semibold">DD Alpaca</th>
                 <th className="py-2 text-right font-semibold">Snap.</th>
                 <th className="py-2 text-right font-semibold">Curva</th>
                 <th className="py-2 font-semibold">Estado</th>
@@ -288,10 +378,10 @@ export default async function StrategyComparePage() {
                   <td className="py-3 text-right">{pct(row.localReturn)}</td>
                   <td className="py-3 text-right">{pct(row.localDrawdown)}</td>
                   <td className="py-3 text-right">
-                    {pct(row.alpacaIntradayReturn)}
+                    {pct(row.alpacaHistoryReturn)}
                   </td>
                   <td className="py-3 text-right">
-                    {pct(row.alpacaIntradayDrawdown)}
+                    {pct(row.alpacaHistoryDrawdown)}
                   </td>
                   <td className="py-3 text-right">{row.localSnapshots}</td>
                   <td className="py-3 text-right uppercase text-muted">

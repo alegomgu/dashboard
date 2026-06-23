@@ -6,11 +6,13 @@ import {
   orderSchema,
   positionSchema,
   portfolioHistorySchema,
+  stockBarsResponseSchema,
   type AlpacaAccountDto,
   type AlpacaClockDto,
   type AlpacaOrderDto,
   type AlpacaPortfolioHistoryDto,
   type AlpacaPositionDto,
+  type AlpacaStockBarDto,
 } from "./schemas";
 
 export class AlpacaClientError extends Error {
@@ -37,6 +39,17 @@ export type AlpacaReadOnlyClient = {
     correlationId: string,
     options?: { period?: string; timeframe?: string; intradayReporting?: string },
   ): Promise<AlpacaPortfolioHistoryDto>;
+  getStockBars(
+    correlationId: string,
+    options: {
+      symbol: string;
+      timeframe: string;
+      start: string;
+      end?: string;
+      limit?: number;
+      adjustment?: "raw" | "split" | "dividend" | "all";
+    },
+  ): Promise<AlpacaStockBarDto[]>;
 };
 
 export function createAlpacaReadOnlyClient(
@@ -126,6 +139,41 @@ export function createAlpacaReadOnlyClient(
         base_value: history.base_value,
         timeframe: history.timeframe,
       };
+    },
+    getStockBars: async (correlationId, options) => {
+      const query = new URLSearchParams({
+        timeframe: options.timeframe,
+        start: options.start,
+        limit: String(options.limit ?? 10000),
+        adjustment: options.adjustment ?? "raw",
+      });
+      if (options.end) {
+        query.set("end", options.end);
+      }
+      const barsUrl = new URL(
+        `/v2/stocks/${encodeURIComponent(options.symbol)}/bars`,
+        "https://data.alpaca.markets",
+      );
+      barsUrl.search = query.toString();
+      const response = await fetch(barsUrl, {
+        method: "GET",
+        headers: {
+          "APCA-API-KEY-ID": env.ALPACA_API_KEY,
+          "APCA-API-SECRET-KEY": env.ALPACA_API_SECRET,
+          "X-Correlation-ID": correlationId,
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new AlpacaClientError(
+          "Alpaca market data request failed",
+          response.status,
+          correlationId,
+        );
+      }
+      const parsed = stockBarsResponseSchema.parse(await response.json());
+      return parsed.bars ?? [];
     },
   };
 }

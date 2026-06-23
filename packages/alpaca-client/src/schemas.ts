@@ -73,8 +73,25 @@ export const portfolioHistorySchema = z.object({
   timeframe: z.string().optional(),
 });
 
+export const stockBarSchema = z.object({
+  t: z.string(),
+  o: z.number(),
+  h: z.number(),
+  l: z.number(),
+  c: z.number(),
+  v: z.number().optional(),
+  vw: z.number().optional(),
+  n: z.number().optional(),
+});
+
+export const stockBarsResponseSchema = z.object({
+  bars: z.array(stockBarSchema).optional(),
+  next_page_token: z.string().nullable().optional(),
+});
+
 export type AlpacaAccountDto = z.infer<typeof accountSchema>;
 export type AlpacaClockDto = z.infer<typeof clockSchema>;
 export type AlpacaPositionDto = z.infer<typeof positionSchema>;
 export type AlpacaOrderDto = z.infer<typeof orderSchema>;
 export type AlpacaPortfolioHistoryDto = z.infer<typeof portfolioHistorySchema>;
+export type AlpacaStockBarDto = z.infer<typeof stockBarSchema>;

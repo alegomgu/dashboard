@@ -247,8 +247,13 @@ export async function appendStrategyHistory(
 export function historyForStrategy(
   history: AccountHistoryFile,
   strategySlug: string,
+  accountId?: string,
 ) {
-  return history.points.filter((point) => point.strategySlug === strategySlug);
+  return history.points.filter(
+    (point) =>
+      point.strategySlug === strategySlug &&
+      (!accountId || point.accountId === accountId),
+  );
 }
 
 export function normalizeLocalHistory(points: AccountHistoryPoint[]) {

@@ -5,8 +5,12 @@ import { getStrategyComparison } from "@/lib/strategies";
 
 export const dynamic = "force-dynamic";
 
-async function captureSnapshot() {
-  const comparison = await getStrategyComparison();
+async function captureSnapshot(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const comparison = await getStrategyComparison({
+    alpacaPeriod: searchParams.get("period"),
+    alpacaTimeframe: searchParams.get("timeframe"),
+  });
   const history = await readHistoryFile();
   const health = getHistoryHealth(history);
 
@@ -24,9 +28,11 @@ async function captureSnapshot() {
       positions: row.positions,
       openOrders: row.openOrders,
       localSnapshots: row.localSnapshots,
-      alpacaIntradayPoints: row.alpacaIntradayHistory.length,
-      alpacaIntradayReturn: row.alpacaIntradayReturn,
-      alpacaIntradayDrawdown: row.alpacaIntradayDrawdown,
+      alpacaPeriod: row.alpacaHistoryPeriod,
+      alpacaTimeframe: row.alpacaHistoryTimeframe,
+      alpacaPoints: row.alpacaHistory.length,
+      alpacaReturn: row.alpacaHistoryReturn,
+      alpacaDrawdown: row.alpacaHistoryDrawdown,
       error: row.error,
     })),
     health,
@@ -52,9 +58,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json(await captureSnapshot());
+  return NextResponse.json(await captureSnapshot(request));
 }
 
-export async function POST() {
-  return NextResponse.json(await captureSnapshot());
+export async function POST(request: NextRequest) {
+  return NextResponse.json(await captureSnapshot(request));
 }
