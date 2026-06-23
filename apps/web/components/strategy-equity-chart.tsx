@@ -1,7 +1,7 @@
 import type { BenchmarkSeries, StrategyComparisonRow } from "@/lib/strategies";
 
 const colors = ["#0f766e", "#2563eb", "#d97706"];
-const benchmarkColor = "#111827";
+const benchmarkColor = "#dc2626";
 
 type StrategyEquityChartProps = {
   rows: StrategyComparisonRow[];
@@ -120,7 +120,7 @@ export function StrategyEquityChart({
               fill="none"
               stroke={item.color}
               strokeWidth={"benchmark" in item && item.benchmark ? "4" : "3"}
-              strokeDasharray={"dashed" in item && item.dashed ? "8 6" : undefined}
+              strokeDasharray={"dashed" in item && item.dashed ? "3 7" : undefined}
               strokeLinecap="round"
               strokeLinejoin="round"
             />

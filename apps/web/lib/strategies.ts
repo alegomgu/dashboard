@@ -408,11 +408,17 @@ async function getSpyBenchmark(
       symbol: "SPY",
       timeframe: toMarketDataTimeframe(timeframe),
       start: new Date(startTimestamp * 1000).toISOString(),
-      end: new Date((endTimestamp + 60) * 1000).toISOString(),
     });
     const history = normalizeHistory(
-      bars.map((bar) => Math.floor(new Date(bar.t).getTime() / 1000)),
-      bars.map((bar) => bar.c),
+      bars
+        .map((bar) => Math.floor(new Date(bar.t).getTime() / 1000))
+        .filter((timestamp) => timestamp <= endTimestamp + 60),
+      bars
+        .filter(
+          (bar) =>
+            Math.floor(new Date(bar.t).getTime() / 1000) <= endTimestamp + 60,
+        )
+        .map((bar) => bar.c),
     );
     const stats = historyStats(history);
 
