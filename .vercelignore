@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.DS_Store
+.git/
+.github/
+.next/
+.tools/
+.venv/
+node_modules/
+coverage/
+dist/
+playwright-report/
+test-results/
+*.tsbuildinfo
+apps/web/data/account-history.json
+diagnostics/
