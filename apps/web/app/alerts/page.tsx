@@ -3,10 +3,11 @@ import {
   AlertTriangle,
   Bell,
   CheckCircle2,
-  Clock3,
   Database,
+  RefreshCcw,
   ShieldAlert,
 } from "lucide-react";
+import { CaptureSnapshotButton } from "@/components/capture-snapshot-button";
 import { StatusBadge } from "@/components/status-badge";
 import { getHistoryHealth, readHistoryFile } from "@/lib/account-history";
 import { getStrategyComparison, type StrategyComparisonRow } from "@/lib/strategies";
@@ -101,7 +102,7 @@ function buildAlerts(
     alerts.push({
       severity: "critical",
       title: "Snapshots muy antiguos",
-      detail: `El último snapshot tiene ${historyHealth.latestAgeMinutes} minutos. Revisa cron, Vercel o conectividad.`,
+      detail: `El último snapshot tiene ${historyHealth.latestAgeMinutes} minutos. Revisa Vercel, Postgres o conectividad con Alpaca.`,
     });
   } else if (
     historyHealth.latestAgeMinutes !== null &&
@@ -248,13 +249,17 @@ export default async function AlertsPage() {
             <p className="mt-4 max-w-3xl text-sm leading-6 text-muted">
               Panel read-only para detectar problemas de estado: cuentas que no
               responden, snapshots antiguos, órdenes abiertas, exposición
-              elevada o drawdowns locales. No envía ni cancela órdenes.
+              elevada o drawdowns locales. Esta sección captura un snapshot al
+              cargar y no envía ni cancela órdenes.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <StatusBadge label={overall.label} tone={overall.tone} />
-            <StatusBadge label="Read only" tone="success" />
-            <StatusBadge label={historyHealth.storage} tone="neutral" />
+          <div className="flex flex-col gap-3 sm:flex-row xl:flex-col">
+            <CaptureSnapshotButton />
+            <div className="flex flex-wrap gap-2">
+              <StatusBadge label={overall.label} tone={overall.tone} />
+              <StatusBadge label="Read only" tone="success" />
+              <StatusBadge label={historyHealth.storage} tone="neutral" />
+            </div>
           </div>
         </div>
       </header>
@@ -286,7 +291,7 @@ export default async function AlertsPage() {
         </div>
         <div className="rounded-2xl border border-line bg-panel p-5 shadow-panel">
           <p className="flex items-center gap-2 text-xs font-semibold uppercase text-muted">
-            <Clock3 size={15} aria-hidden="true" />
+            <RefreshCcw size={15} aria-hidden="true" />
             Último snapshot
           </p>
           <p className="mt-3 text-lg font-semibold tracking-normal">

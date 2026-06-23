@@ -70,8 +70,8 @@ export default async function StrategyComparePage() {
             </div>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-muted">
               Comparativa read-only entre las tres estrategias/cuentas. La curva
-              se normaliza desde el primer punto de histórico que devuelva Alpaca,
-              útil porque arrancan en la misma fecha.
+              se normaliza desde el primer snapshot propio. Esta sección captura
+              un nuevo punto al cargar y también permite forzar refresco manual.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row xl:flex-col">
