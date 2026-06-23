@@ -455,7 +455,7 @@ function benchmarkRange(
   }
 
   return {
-    startTimestamp: Math.min(...visibleTimestamps, now),
+    startTimestamp: Math.min(...visibleTimestamps, periodStart),
     endTimestamp: Math.max(...visibleTimestamps, now),
   };
 }
