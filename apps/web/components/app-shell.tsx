@@ -6,17 +6,8 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   Activity,
-  Bell,
-  BookOpen,
-  BriefcaseBusiness,
-  CandlestickChart,
-  Gauge,
   LayoutDashboard,
   ListChecks,
-  Radar,
-  ScrollText,
-  Settings,
-  ShieldCheck,
   WalletCards,
 } from "lucide-react";
 import clsx from "clsx";
@@ -24,17 +15,10 @@ import { AccountSwitcher } from "./account-switcher";
 import type { AccountOption } from "./account-switcher";
 
 const navItems = [
+  ["/overview", "Resumen", Activity],
   ["/dashboard", "Dashboard", LayoutDashboard],
-  ["/strategies", "Estrategias", ScrollText],
-  ["/portfolio", "Portfolio", BriefcaseBusiness],
   ["/positions", "Posiciones", WalletCards],
   ["/orders", "Órdenes", ListChecks],
-  ["/markets", "Mercados", CandlestickChart],
-  ["/watchlists", "Watchlists", Radar],
-  ["/risk", "Riesgo", ShieldCheck],
-  ["/alerts", "Alertas", Bell],
-  ["/journal", "Diario", BookOpen],
-  ["/system", "Sistema", Gauge],
 ] as const;
 
 function isActive(pathname: string, href: string) {
@@ -82,7 +66,7 @@ export function AppShell({
     <div className="min-h-dvh bg-surface text-ink">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 bg-sidebar px-4 py-5 text-white shadow-sidebar lg:flex lg:flex-col">
         <Link
-          href={hrefWithAccount("/dashboard")}
+          href={hrefWithAccount("/overview")}
           className="flex items-center gap-3 px-1"
         >
           <div className="flex size-11 items-center justify-center rounded-2xl bg-white/10 text-white shadow-sm ring-1 ring-white/15">
@@ -148,7 +132,7 @@ export function AppShell({
         <header className="sticky top-0 z-20 border-b border-line/80 bg-panel/90 backdrop-blur-xl lg:hidden">
           <div className="flex items-center justify-between px-4 py-3">
             <Link
-              href={hrefWithAccount("/dashboard")}
+              href={hrefWithAccount("/overview")}
               className="flex min-w-0 items-center gap-3"
             >
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-ink text-panel">
@@ -161,20 +145,10 @@ export function AppShell({
                 <p className="truncate text-sm font-semibold">Command Center</p>
               </div>
             </Link>
-            <Link
-              href="/system"
-              className={clsx(
-                "flex size-10 shrink-0 items-center justify-center rounded-xl border border-line bg-panelSoft text-muted shadow-sm",
-                isActive(pathname, "/system") && "border-ink bg-ink text-panel",
-              )}
-              aria-label="Sistema"
-            >
-              <Settings size={18} aria-hidden="true" />
-            </Link>
           </div>
 
           <nav className="scrollbar-none flex max-w-full min-w-0 gap-2 overflow-x-auto px-4 pb-3">
-            {navItems.slice(0, 8).map(([href, label, Icon]) => {
+            {navItems.map(([href, label, Icon]) => {
               const active = isActive(pathname, href);
 
               return (

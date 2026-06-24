@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import OverviewPage from "./overview/page";
 
-export default function HomePage() {
-  redirect("/dashboard");
-}
+export const dynamic = "force-dynamic";
+
+export default OverviewPage;
