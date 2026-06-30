@@ -67,7 +67,7 @@ export function AccountSwitcher({
         >
           Cuenta Alpaca
         </p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {accounts.map((account) => {
             const params = new URLSearchParams(searchParams.toString());
             params.set("account", account.id);

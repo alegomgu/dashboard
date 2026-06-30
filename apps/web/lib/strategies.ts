@@ -17,7 +17,8 @@ import { createCorrelationId } from "./correlation";
 export type StrategySlug =
   | "regime-core"
   | "momentum-legar"
-  | "aggressive-ai-momentum";
+  | "aggressive-ai-momentum"
+  | "aggressive-ai-momentum-top8";
 
 export type StrategyMeta = {
   slug: StrategySlug;
@@ -103,6 +104,16 @@ export const strategyMetas: StrategyMeta[] = [
     tone: "amber",
     summary:
       "Momentum explosivo concentrado en líderes growth/IA/semis con ranking multi-feature.",
+  },
+  {
+    slug: "aggressive-ai-momentum-top8",
+    title: "Aggressive AI Momentum Top8",
+    shortName: "AI Top8",
+    fileName: "STRATEGY_CARD_aggressive_ai_momentum_top8.md",
+    accountId: "alpaca_4",
+    tone: "amber",
+    summary:
+      "Variante de momentum explosivo más diversificada: top 8 posiciones y gross objetivo 1.3x.",
   },
 ];
 
